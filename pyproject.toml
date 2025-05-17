@@ -5,6 +5,7 @@ description = ""
 authors = [{ name = "Partnership for Applied Biblical NLP (PAB-NLP)" }]
 requires-python = ">=3.9,<3.13"
 readme = "README.md"
+
 dependencies = [
     "tqdm>=4.64.1,<5",
     "pandas>=1.5.2,<2",
@@ -21,3 +22,12 @@ dependencies = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["ebible"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ebible"]
+
+[project.scripts]
+main = "ebible.ebible:main"

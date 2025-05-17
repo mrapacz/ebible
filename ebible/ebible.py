@@ -28,8 +28,8 @@ import regex
 import requests
 from bs4 import BeautifulSoup
 
-from settings_file import write_settings_file
-from rename_usfm import rename_usfm
+from .settings_file import write_settings_file
+from .rename_usfm import rename_usfm
 
 global headers
 headers: Dict[str, str] = {
@@ -49,7 +49,6 @@ class Translation:
 
 # Define methods for downloading and unzipping eBibles
 def log_and_print(file, messages, log_type="Info") -> None:
-
     if isinstance(messages, str):
         with open(file, "a") as log:
             log.write(
@@ -72,7 +71,6 @@ def make_directories(dirs_to_create) -> None:
 
 
 def download_file(url, file, headers=headers) -> Optional[Path]:
-
     r = requests.get(url, headers=headers)
     # If the status is OK continue
     if r.status_code == requests.codes.ok:
@@ -84,7 +82,9 @@ def download_file(url, file, headers=headers) -> Optional[Path]:
     return None
 
 
-def find_recent_download(downloads_folder: Path, translation_id: str, max_zip_age_days: int) -> Optional[Path]:
+def find_recent_download(
+    downloads_folder: Path, translation_id: str, max_zip_age_days: int
+) -> Optional[Path]:
     """
     Returns the local path of a recently downloaded zip file for this translation id (if one exists).
 
@@ -93,7 +93,9 @@ def find_recent_download(downloads_folder: Path, translation_id: str, max_zip_ag
     Zip files are considered "recent" if the number of days between now and when it was downloaded
     is within max_zip_age_days days
     """
-    potential_zips: List[Path] = list(downloads_folder.glob(f"{translation_id}--*-*-*.zip"))
+    potential_zips: List[Path] = list(
+        downloads_folder.glob(f"{translation_id}--*-*-*.zip")
+    )
 
     if not potential_zips:
         return None
@@ -102,10 +104,7 @@ def find_recent_download(downloads_folder: Path, translation_id: str, max_zip_ag
         result = regex.match(".*--(\\d{4})-(\\d{2})-(\\d{2})", zip.stem)
         return date(int(result.group(1)), int(result.group(2)), int(result.group(3)))
 
-    zip_dates_sorted: List[date] = sorted([
-        parse_date(zip)
-        for zip in potential_zips
-    ])
+    zip_dates_sorted: List[date] = sorted([parse_date(zip) for zip in potential_zips])
 
     most_recent = zip_dates_sorted[-1]
 
@@ -140,12 +139,13 @@ def download_files(
     downloaded_files: List[(str, Path)] = []
 
     for i, translation_id in enumerate(translation_ids):
-
         # Construct the download url and the local file path.
         url = f"{base_url}{translation_id}_usfm.zip"
-        file = folder / build_zip_filename(translation_id, datetime.now(timezone.utc).date())
+        file = folder / build_zip_filename(
+            translation_id, datetime.now(timezone.utc).date()
+        )
 
-        log_and_print(logfile, f"{i+1}: Downloading from {url} to {file}.")
+        log_and_print(logfile, f"{i + 1}: Downloading from {url} to {file}.")
         if downloaded_file := download_file(url, file):
             downloaded_files.append((translation_id, downloaded_file))
 
@@ -199,13 +199,15 @@ def create_project_name(translation: Translation) -> str:
     if regex.match(f"^{regex.escape(translation.language_code)}[_\\-]", translation.id):
         # Cases 2-4 - the translation id begins with the language code plus an underscore or hyphen
         # The matched characters are removed, and remaining hyphens are replaced with underscores
-        return translation.id[len(translation.language_code) + 1:].replace("-", "_")
+        return translation.id[len(translation.language_code) + 1 :].replace("-", "_")
     else:
         # Case 1 - no transformation needed
         return translation.id
 
 
-def get_translations(translations_csv: Path, allow_non_redistributable: bool) -> List[Translation]:
+def get_translations(
+    translations_csv: Path, allow_non_redistributable: bool
+) -> List[Translation]:
     """
     Extracts the useful translation information from the translation.csv file.
 
@@ -230,19 +232,25 @@ def get_translations(translations_csv: Path, allow_non_redistributable: bool) ->
         for row in reader:
             is_redistributable = parse_bool(row["Redistributable"])
 
-            if parse_bool(row["downloadable"]) and (is_redistributable or allow_non_redistributable):
+            if parse_bool(row["downloadable"]) and (
+                is_redistributable or allow_non_redistributable
+            ):
                 language_code: str = row["languageCode"]
                 translation_id: str = row["translationId"]
 
                 total_verses = int(row["OTverses"]) + int(row["NTverses"])
 
-                if (total_verses >= 400):
-                    translations.append(Translation(language_code, translation_id, is_redistributable))
+                if total_verses >= 400:
+                    translations.append(
+                        Translation(language_code, translation_id, is_redistributable)
+                    )
 
         return translations
 
 
-def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Path, str]) -> List[Dict[str, object]]:
+def get_licence_details(
+    logfile, folder, project_path_to_translation_id: Dict[Path, str]
+) -> List[Dict[str, object]]:
     """
     Extracts licence details from the unzipped folders inside the `folder` passed.
     It is assumed that the unzipped folders will contain a copr.htm file.
@@ -250,8 +258,8 @@ def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Pa
     """
 
     column_headers = [
-        "ID", # Original translation id corresponding to the project
-        "File", # Path to the paratext project
+        "ID",  # Original translation id corresponding to the project
+        "File",  # Path to the paratext project
         "Language",
         "Dialect",
         "Vernacular Title",
@@ -272,7 +280,9 @@ def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Pa
     for i, project in enumerate(sorted(os.listdir(folder))):
         copyright_path = folder / project / "copr.htm"
         if not copyright_path.exists():
-            log_and_print(f"Unable to find copr.htm file for project '{project}' at expected path: {copyright_path} - aborting")
+            log_and_print(
+                f"Unable to find copr.htm file for project '{project}' at expected path: {copyright_path} - aborting"
+            )
             exit()
 
         entry = dict.fromkeys(column_headers)
@@ -300,9 +310,7 @@ def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Pa
                     entry["Licence Type"] = cc_match["type"]
                     entry["Licence Version"] = cc_match["version"]
                 else:
-                    cc_by_match = regex.match(
-                        r".*?/licenses/by(?P<version>.*)/", ref
-                    )
+                    cc_by_match = regex.match(r".*?/licenses/by(?P<version>.*)/", ref)
                     if cc_by_match:
                         # print(f'Licence version = {cc_by_match["version"]}')
                         entry["Licence Type"] = "by"
@@ -317,11 +325,10 @@ def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Pa
             # where the useful information is spread across many paragraphs
             # in contrast to the other Bibles where the useful information is contained
             # completely within the first paragraph
-            paragraphs = soup.find('body').find_all('p')
+            paragraphs = soup.find("body").find_all("p")
             copy_strings = [p.get_text(strip=True) for p in paragraphs]
         else:
             copy_strings = list(soup.body.p.stripped_strings)
-
 
         for j, copy_string in enumerate(copy_strings):
             if j == 0 and "copyright ©" in copy_string:
@@ -343,7 +350,7 @@ def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Pa
             # is separated from the translators such that they end up different stripped strings
             translation_search_term = "Translation by: "
             if translation_search_term in copy_string:
-                entry["Translation by"] = copy_string[len(translation_search_term):]
+                entry["Translation by"] = copy_string[len(translation_search_term) :]
             if "Public Domain" in copy_string:
                 entry["Copyright Years"] = ""
                 entry["Copyright Holder"] = "Public Domain"
@@ -359,7 +366,6 @@ def get_licence_details(logfile, folder, project_path_to_translation_id: Dict[Pa
 
 
 def write_licence_file(licence_file, logfile, df):
-
     # For a description of the schema, see `column_headers` list in method `get_licence_details`
 
     df.to_csv(licence_file, sep="\t", index=False)
@@ -370,7 +376,6 @@ def write_licence_file(licence_file, logfile, df):
 
 
 def choose_yes_no(prompt: str) -> bool:
-
     choice: str = " "
     while choice not in ["n", "y"]:
         choice: str = input(prompt).strip()[0].lower()
@@ -395,7 +400,6 @@ def check_folders_exist(folders: list, base: Path, logfile):
 
         print(f"\n\nAre you sure this is the right folder:    {base} ")
         if choose_yes_no("Enter Y to continue or N to Quit."):
-
             # Create the required directories
             make_directories(missing_folders)
             log_and_print(logfile, f"All the required folders were created at {base}\n")
@@ -407,7 +411,6 @@ def check_folders_exist(folders: list, base: Path, logfile):
 
 
 def main() -> None:
-
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="Download, unzip and extract text corpora from eBible."
     )
@@ -522,12 +525,11 @@ def main() -> None:
     translation_ids = [translation.id for translation in translations]
 
     if args.filter:
-        translation_ids = [
-            id
-            for id in translation_ids
-            if regex.match(args.filter, id)
-        ]
-        log_and_print(logfile, f"Command line filter used to reduce translation id's to {translation_ids}")
+        translation_ids = [id for id in translation_ids if regex.match(args.filter, id)]
+        log_and_print(
+            logfile,
+            f"Command line filter used to reduce translation id's to {translation_ids}",
+        )
 
     log_and_print(logfile, f"{len(translation_ids)} translation id's will be processed")
 
@@ -539,9 +541,13 @@ def main() -> None:
         existing_translation_ids: List[str] = [
             translation_id
             for translation_id in translation_ids
-            if find_recent_download(downloads_folder, translation_id, args.max_zip_age_days)
+            if find_recent_download(
+                downloads_folder, translation_id, args.max_zip_age_days
+            )
         ]
-        translation_ids_to_download = list(set(translation_ids) - set(existing_translation_ids))
+        translation_ids_to_download = list(
+            set(translation_ids) - set(existing_translation_ids)
+        )
 
     downloaded_files = download_files(
         translation_ids_to_download,
@@ -556,12 +562,14 @@ def main() -> None:
             f"Downloaded {len(downloaded_files)} eBible files to {downloads_folder}.",
         )
     else:
-        log_and_print(logfile, "No files were downloaded - either they were already downloaded or failed to download")
+        log_and_print(
+            logfile,
+            "No files were downloaded - either they were already downloaded or failed to download",
+        )
 
     if args.download_only:
         log_and_print(logfile, "Terminating as --download-only flag set")
         exit()
-
 
     # This mapping is needed later for setting the "ID" field in the licence details for each project
     project_path_to_translation_id: Dict[Path, str] = dict()
@@ -586,9 +594,16 @@ def main() -> None:
 
         # Unzip it
         project_dir.mkdir(parents=True, exist_ok=True)
-        log_and_print(logfile, f"Extracting translation {translation.id} to: {project_dir}")
+        log_and_print(
+            logfile, f"Extracting translation {translation.id} to: {project_dir}"
+        )
         try:
-            shutil.unpack_archive(find_recent_download(downloads_folder, translation.id, args.max_zip_age_days), project_dir)
+            shutil.unpack_archive(
+                find_recent_download(
+                    downloads_folder, translation.id, args.max_zip_age_days
+                ),
+                project_dir,
+            )
         except shutil.ReadError:
             log_and_print(logfile, f"ReadError: While trying to unzip: {project_dir}")
         except FileNotFoundError:
@@ -599,7 +614,6 @@ def main() -> None:
         write_settings_file(project_dir, translation.language_code, translation.id)
 
         rename_usfm(project_dir)
-
 
     # Get projects licence details
     data = get_licence_details(logfile, projects_folder, project_path_to_translation_id)
